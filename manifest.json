@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "intercept",
+  "version": "0.1.0",
+  "description": "OpenAPI-aware API response overrides for Chrome DevTools",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/content-script.ts"],
+      "run_at": "document_start"
+    }
+  ],
+  "devtools_page": "src/devtools/devtools.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/injected/injected.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

@@ -5,6 +5,13 @@ import manifest from './manifest.json'
 
 export default defineConfig({
   plugins: [react(), crx({ manifest })],
+  build: {
+    rollupOptions: {
+      input: {
+        panel: 'src/panel/index.html',
+      },
+    },
+  },
   test: {
     environment: 'node',
   },

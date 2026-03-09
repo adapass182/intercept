@@ -25,9 +25,12 @@ export type CheckInterceptResponse =
 
 export type OpenAPISpec = {
   paths: Record<string, OpenAPIPathItem>
+  // OpenAPI 3.0
   components?: {
     schemas?: Record<string, OpenAPISchema>
   }
+  // Swagger 2.0
+  definitions?: Record<string, OpenAPISchema>
 }
 
 export type OpenAPIPathItem = Partial<
@@ -42,7 +45,10 @@ export type OpenAPIOperation = {
 }
 
 export type OpenAPIResponse = {
+  // OpenAPI 3.0
   content?: Record<string, { schema?: OpenAPISchema }>
+  // Swagger 2.0
+  schema?: OpenAPISchema
 }
 
 export type OpenAPISchema = {

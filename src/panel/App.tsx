@@ -43,9 +43,11 @@ export function App() {
     const pathItem = spec.paths[selectedEndpoint.path]
     const operation = pathItem?.[selectedEndpoint.method.toLowerCase() as 'get']
     const response200 = operation?.responses?.['200']
-    const schema = response200?.content?.['application/json']?.schema
+    // OpenAPI 3.0: content['application/json'].schema — Swagger 2.0: schema directly on response
+    const schema = response200?.content?.['application/json']?.schema ?? response200?.schema
     if (!schema) return undefined
-    return resolveSchema(schema, spec.components?.schemas ?? {})
+    const allSchemas = { ...spec.components?.schemas, ...spec.definitions }
+    return resolveSchema(schema, allSchemas)
   }
 
   return (

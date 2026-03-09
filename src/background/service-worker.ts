@@ -56,6 +56,7 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       const rawPath = extractPathFromUrl(message.url)
       const base = basePaths[origin] ?? ''
       const path = base && rawPath.startsWith(base) ? rawPath.slice(base.length) || '/' : rawPath
+      console.debug('[intercept:sw] CHECK_INTERCEPT', message.method, rawPath, '→ stripped:', path, 'base:', base, 'watched:', watchedPatterns.map(p => p.key))
       const overrides = await loadOrigin(origin)
 
       for (const [key, override] of Object.entries(overrides)) {
@@ -84,6 +85,7 @@ async function handleMessage(message: MessageType): Promise<unknown> {
 
     case 'SET_BASE_PATH': {
       basePaths[message.origin] = message.basePath
+      console.debug('[intercept:sw] SET_BASE_PATH', message.origin, message.basePath)
       return { ok: true }
     }
 
@@ -92,6 +94,7 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       if (!watchedPatterns.find((p) => p.key === key)) {
         watchedPatterns.push({ method: message.method.toUpperCase(), path: message.path, key })
       }
+      console.debug('[intercept:sw] WATCH_ENDPOINT registered', key, 'all watched:', watchedPatterns.map(p => p.key))
       return { ok: true }
     }
 

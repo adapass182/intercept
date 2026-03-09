@@ -36,6 +36,7 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
     'GET'
   ).toUpperCase()
 
+  console.debug('[intercept] fetch intercepted', method, url)
   const result = await sendToBackground({ type: 'CHECK_INTERCEPT', method, url }) as {
     matched: boolean
     templatePath?: string
@@ -47,6 +48,8 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
       rawBody: string | null
     }
   }
+
+  console.debug('[intercept] CHECK_INTERCEPT result', result)
 
   // No override — but if the panel is watching this endpoint, capture the response for prefilling
   if (!result.matched) {

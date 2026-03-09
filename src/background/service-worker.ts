@@ -5,14 +5,42 @@ import { matchPath, extractPathFromUrl } from '../lib/path-matcher'
 // In-memory cache, backed by chrome.storage.local
 const state: Record<string, OriginOverrides> = {}
 
-// Last real response body per endpoint key, e.g. "GET /api/users"
+// Last real response body per endpoint key — persisted so it survives SW restarts
 const realResponses: Record<string, unknown> = {}
 
-// Endpoints the panel is currently watching (for response capture without an override)
+// Watched patterns and basePaths are persisted to survive SW restarts
 const watchedPatterns: Array<{ method: string; path: string; key: string }> = []
-
-// Swagger 2.0 basePath per origin (e.g. "/api"), stripped before path matching
 const basePaths: Record<string, string> = {}
+
+// Rolling debug log (last 100 entries)
+const debugLog: string[] = []
+function log(msg: string) {
+  const entry = `${new Date().toISOString().slice(11, 23)} ${msg}`
+  debugLog.push(entry)
+  if (debugLog.length > 100) debugLog.shift()
+}
+
+// Load persisted state on startup (runs every time SW wakes up)
+async function init() {
+  const stored = await chrome.storage.local.get(['_basePaths', '_watchedKeys', '_realResponses'])
+
+  if (stored._basePaths) Object.assign(basePaths, stored._basePaths)
+  if (stored._realResponses) Object.assign(realResponses, stored._realResponses)
+
+  if (stored._watchedKeys) {
+    for (const key of stored._watchedKeys as string[]) {
+      if (watchedPatterns.find((p) => p.key === key)) continue
+      const spaceIdx = key.indexOf(' ')
+      const method = key.slice(0, spaceIdx)
+      const path = key.slice(spaceIdx + 1)
+      watchedPatterns.push({ method, path, key })
+    }
+  }
+
+  log(`SW init — basePaths: ${JSON.stringify(basePaths)} watched: ${watchedPatterns.map(p => p.key).join(', ') || 'none'}`)
+}
+
+init()
 
 async function loadOrigin(origin: string): Promise<OriginOverrides> {
   if (state[origin]) return state[origin]
@@ -56,16 +84,20 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       const rawPath = extractPathFromUrl(message.url)
       const base = basePaths[origin] ?? ''
       const path = base && rawPath.startsWith(base) ? rawPath.slice(base.length) || '/' : rawPath
-      console.debug('[intercept:sw] CHECK_INTERCEPT', message.method, rawPath, '→ stripped:', path, 'base:', base, 'watched:', watchedPatterns.map(p => p.key))
+
+      log(`CHECK_INTERCEPT ${message.method} ${rawPath} → stripped: ${path} (base: "${base}") watched: [${watchedPatterns.map(p => p.key).join(', ')}]`)
+
       const overrides = await loadOrigin(origin)
 
       for (const [key, override] of Object.entries(overrides)) {
         if (!override.enabled) continue
-        const [keyMethod, ...keyPathParts] = key.split(' ')
-        const keyPath = keyPathParts.join(' ')
+        const spaceIdx = key.indexOf(' ')
+        const keyMethod = key.slice(0, spaceIdx)
+        const keyPath = key.slice(spaceIdx + 1)
         if (keyMethod !== message.method.toUpperCase()) continue
         if (!matchPath(keyPath, path)) continue
 
+        log(`→ OVERRIDE MATCH: ${key}`)
         return {
           matched: true,
           override,
@@ -73,19 +105,22 @@ async function handleMessage(message: MessageType): Promise<unknown> {
         } satisfies CheckInterceptResponse
       }
 
-      // No override matched — check if the panel is watching this URL for capture
+      // No override matched — check watched patterns for capture
       for (const watched of watchedPatterns) {
         if (watched.method !== message.method.toUpperCase()) continue
         if (!matchPath(watched.path, path)) continue
+        log(`→ WATCH MATCH: ${watched.key} (will capture)`)
         return { matched: false, captureKey: watched.key } satisfies CheckInterceptResponse
       }
 
+      log(`→ no match`)
       return { matched: false } satisfies CheckInterceptResponse
     }
 
     case 'SET_BASE_PATH': {
       basePaths[message.origin] = message.basePath
-      console.debug('[intercept:sw] SET_BASE_PATH', message.origin, message.basePath)
+      await chrome.storage.local.set({ _basePaths: basePaths })
+      log(`SET_BASE_PATH ${message.origin} → "${message.basePath}"`)
       return { ok: true }
     }
 
@@ -93,18 +128,27 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       const key = `${message.method.toUpperCase()} ${message.path}`
       if (!watchedPatterns.find((p) => p.key === key)) {
         watchedPatterns.push({ method: message.method.toUpperCase(), path: message.path, key })
+        await chrome.storage.local.set({ _watchedKeys: watchedPatterns.map((p) => p.key) })
       }
-      console.debug('[intercept:sw] WATCH_ENDPOINT registered', key, 'all watched:', watchedPatterns.map(p => p.key))
+      log(`WATCH_ENDPOINT ${key} — all watched: [${watchedPatterns.map(p => p.key).join(', ')}]`)
       return { ok: true }
     }
 
     case 'STORE_REAL_RESPONSE': {
       realResponses[message.key] = message.body
+      await chrome.storage.local.set({ _realResponses: realResponses })
+      log(`STORE_REAL_RESPONSE ${message.key}`)
       return { ok: true }
     }
 
     case 'GET_REAL_RESPONSE': {
-      return realResponses[message.key] ?? null
+      const resp = realResponses[message.key] ?? null
+      log(`GET_REAL_RESPONSE ${message.key} → ${resp ? 'found' : 'not found'}`)
+      return resp
+    }
+
+    case 'GET_DEBUG_LOG': {
+      return [...debugLog]
     }
   }
 }

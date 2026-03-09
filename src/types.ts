@@ -22,6 +22,7 @@ export type MessageType =
   | { type: 'GET_REAL_RESPONSE'; key: string }
   | { type: 'WATCH_ENDPOINT'; method: string; path: string }
   | { type: 'SET_BASE_PATH'; origin: string; basePath: string }
+  | { type: 'GET_DEBUG_LOG' }
 
 export type CheckInterceptResponse =
   | { matched: false; captureKey?: string }

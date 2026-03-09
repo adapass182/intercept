@@ -11,6 +11,9 @@ const realResponses: Record<string, unknown> = {}
 // Endpoints the panel is currently watching (for response capture without an override)
 const watchedPatterns: Array<{ method: string; path: string; key: string }> = []
 
+// Swagger 2.0 basePath per origin (e.g. "/api"), stripped before path matching
+const basePaths: Record<string, string> = {}
+
 async function loadOrigin(origin: string): Promise<OriginOverrides> {
   if (state[origin]) return state[origin]
   const stored = await chrome.storage.local.get(origin)
@@ -50,7 +53,9 @@ async function handleMessage(message: MessageType): Promise<unknown> {
     case 'CHECK_INTERCEPT': {
       const url = new URL(message.url)
       const origin = url.origin
-      const path = extractPathFromUrl(message.url)
+      const rawPath = extractPathFromUrl(message.url)
+      const base = basePaths[origin] ?? ''
+      const path = base && rawPath.startsWith(base) ? rawPath.slice(base.length) || '/' : rawPath
       const overrides = await loadOrigin(origin)
 
       for (const [key, override] of Object.entries(overrides)) {
@@ -75,6 +80,11 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       }
 
       return { matched: false } satisfies CheckInterceptResponse
+    }
+
+    case 'SET_BASE_PATH': {
+      basePaths[message.origin] = message.basePath
+      return { ok: true }
     }
 
     case 'WATCH_ENDPOINT': {

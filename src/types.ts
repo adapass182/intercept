@@ -21,6 +21,7 @@ export type MessageType =
   | { type: 'STORE_REAL_RESPONSE'; key: string; body: unknown }
   | { type: 'GET_REAL_RESPONSE'; key: string }
   | { type: 'WATCH_ENDPOINT'; method: string; path: string }
+  | { type: 'SET_BASE_PATH'; origin: string; basePath: string }
 
 export type CheckInterceptResponse =
   | { matched: false; captureKey?: string }
@@ -34,6 +35,7 @@ export type OpenAPISpec = {
   }
   // Swagger 2.0
   definitions?: Record<string, OpenAPISchema>
+  basePath?: string
 }
 
 export type OpenAPIPathItem = Partial<

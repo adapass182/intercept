@@ -19,7 +19,7 @@ export function App() {
   const [rightWidth, setRightWidth] = useState(260)
   const dragging = useRef<{ side: 'left' | 'right'; startX: number; startWidth: number } | null>(null)
 
-  const { overrides, setOverride, deleteOverride } = useOverrides()
+  const { origin, overrides, setOverride, deleteOverride } = useOverrides()
 
   useEffect(() => {
     chrome.storage.local.get('specUrl', (result) => {
@@ -54,6 +54,9 @@ export function App() {
       setSpec(json)
       setEndpoints(parseEndpoints(json))
       chrome.storage.local.set({ specUrl })
+      if (json.basePath && origin) {
+        chrome.runtime.sendMessage({ type: 'SET_BASE_PATH', origin, basePath: json.basePath })
+      }
     } catch (e) {
       setLoadError(`Failed to load spec: ${(e as Error).message}`)
     }

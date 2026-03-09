@@ -1,6 +1,7 @@
 // src/panel/hooks/useOverrides.ts
 import { useState, useEffect, useCallback } from 'react'
 import type { Override, OriginOverrides } from '../../types'
+import { sendMessage } from '../lib/messaging'
 
 async function getInspectedOrigin(): Promise<string> {
   return new Promise((resolve) => {
@@ -20,7 +21,7 @@ export function useOverrides() {
   const [overrides, setOverrides] = useState<OriginOverrides>({})
 
   const load = useCallback(async (o: string) => {
-    const result = await chrome.runtime.sendMessage({ type: 'GET_OVERRIDES', origin: o })
+    const result = await sendMessage<OriginOverrides>({ type: 'GET_OVERRIDES', origin: o })
     setOverrides(result ?? {})
   }, [])
 
@@ -32,12 +33,12 @@ export function useOverrides() {
   }, [load])
 
   const setOverride = useCallback(async (key: string, override: Override) => {
-    await chrome.runtime.sendMessage({ type: 'SET_OVERRIDE', origin, key, override })
+    await sendMessage({ type: 'SET_OVERRIDE', origin, key, override })
     setOverrides((prev) => ({ ...prev, [key]: override }))
   }, [origin])
 
   const deleteOverride = useCallback(async (key: string) => {
-    await chrome.runtime.sendMessage({ type: 'DELETE_OVERRIDE', origin, key })
+    await sendMessage({ type: 'DELETE_OVERRIDE', origin, key })
     setOverrides((prev) => {
       const next = { ...prev }
       delete next[key]

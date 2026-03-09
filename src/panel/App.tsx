@@ -7,6 +7,7 @@ import { useOverrides } from './hooks/useOverrides'
 import { EndpointList } from './components/EndpointList'
 import { OverrideEditor } from './components/OverrideEditor'
 import { SchemaPreview } from './components/SchemaPreview'
+import { sendMessage } from './lib/messaging'
 
 type Tab = 'endpoints' | 'debug'
 
@@ -59,7 +60,7 @@ export function App() {
       setEndpoints(parseEndpoints(json))
       chrome.storage.local.set({ specUrl })
       if (json.basePath && origin) {
-        chrome.runtime.sendMessage({ type: 'SET_BASE_PATH', origin, basePath: json.basePath })
+        void sendMessage({ type: 'SET_BASE_PATH', origin, basePath: json.basePath })
       }
     } catch (e) {
       setLoadError(`Failed to load spec: ${(e as Error).message}`)
@@ -72,12 +73,12 @@ export function App() {
   // Register the selected endpoint with the background so responses are captured even without an override
   useEffect(() => {
     if (!selectedEndpoint) return
-    chrome.runtime.sendMessage({ type: 'WATCH_ENDPOINT', method: selectedEndpoint.method, path: selectedEndpoint.path })
+    void sendMessage({ type: 'WATCH_ENDPOINT', method: selectedEndpoint.method, path: selectedEndpoint.path })
   }, [selectedEndpoint])
 
   function refreshDebugLog() {
-    chrome.runtime.sendMessage({ type: 'GET_DEBUG_LOG' }, (resp) => {
-      if (Array.isArray(resp)) setDebugLog(resp as string[])
+    sendMessage<string[]>({ type: 'GET_DEBUG_LOG' }).then((resp) => {
+      if (Array.isArray(resp)) setDebugLog(resp)
     })
   }
 

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import type { Override, OpenAPISchema } from '../../types'
 import { generateDefaults } from '../../lib/default-generator'
+import { sendMessage } from '../lib/messaging'
 
 type Props = {
   endpointKey: string
@@ -57,8 +58,8 @@ export function OverrideEditor({ endpointKey, override, responseSchema, schemas,
     setRawJson(override?.rawBody ?? '')
     setJsonError('')
     // Check if a real response has been captured for this endpoint
-    chrome.runtime.sendMessage({ type: 'GET_REAL_RESPONSE', key: endpointKey }, (resp) => {
-      setLastResponse(resp && typeof resp === 'object' ? resp as Record<string, unknown> : null)
+    sendMessage<Record<string, unknown>>({ type: 'GET_REAL_RESPONSE', key: endpointKey }).then((resp) => {
+      setLastResponse(resp && typeof resp === 'object' ? resp : null)
     })
   }, [endpointKey, override])
 

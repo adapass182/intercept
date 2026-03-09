@@ -2,8 +2,7 @@
 
 // Inject the script into the page context (required to patch window.fetch)
 const script = document.createElement('script')
-script.src = chrome.runtime.getURL('src/injected/injected.ts')
-script.type = 'module'
+script.src = chrome.runtime.getURL('assets/injected.js')
 ;(document.head || document.documentElement).appendChild(script)
 script.remove()
 

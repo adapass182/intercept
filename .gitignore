@@ -2,4 +2,5 @@
 .worktrees/
 node_modules/
 dist/
+public/assets/
 *.log

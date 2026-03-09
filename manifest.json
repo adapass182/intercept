@@ -19,7 +19,7 @@
   "devtools_page": "src/devtools/devtools.html",
   "web_accessible_resources": [
     {
-      "resources": ["src/injected/injected.ts"],
+      "resources": ["assets/injected.js"],
       "matches": ["<all_urls>"]
     }
   ]

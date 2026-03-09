@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "OpenAPI-aware API response overrides for Chrome DevTools",
   "scripts": {
-    "build": "vite build",
+    "build": "node scripts/build-injected.mjs && vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

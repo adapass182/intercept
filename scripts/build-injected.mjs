@@ -9,6 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 await build({
   configFile: false,
+  publicDir: false,
   build: {
     lib: {
       entry: resolve(__dirname, '../src/injected/injected.ts'),

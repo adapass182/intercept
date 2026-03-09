@@ -94,7 +94,10 @@ export function App() {
         </div>
 
         <div style={{ width: 220, flexShrink: 0 }}>
-          <SchemaPreview schema={getResponseSchema()} />
+          <SchemaPreview
+            schema={getResponseSchema()}
+            schemas={{ ...spec?.components?.schemas, ...spec?.definitions }}
+          />
         </div>
       </div>
     </div>

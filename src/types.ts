@@ -18,6 +18,8 @@ export type MessageType =
   | { type: 'SET_OVERRIDE'; origin: string; key: string; override: Override }
   | { type: 'DELETE_OVERRIDE'; origin: string; key: string }
   | { type: 'CHECK_INTERCEPT'; method: string; url: string }
+  | { type: 'STORE_REAL_RESPONSE'; key: string; body: unknown }
+  | { type: 'GET_REAL_RESPONSE'; key: string }
 
 export type CheckInterceptResponse =
   | { matched: false }

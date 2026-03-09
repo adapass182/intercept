@@ -1,5 +1,5 @@
 // src/panel/App.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { OpenAPISpec, OpenAPISchema, Override } from '../types'
 import { parseEndpoints, resolveSchema } from '../lib/schema-parser'
 import type { Endpoint } from '../lib/schema-parser'
@@ -15,12 +15,35 @@ export function App() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [loadError, setLoadError] = useState('')
 
+  const [leftWidth, setLeftWidth] = useState(220)
+  const [rightWidth, setRightWidth] = useState(260)
+  const dragging = useRef<{ side: 'left' | 'right'; startX: number; startWidth: number } | null>(null)
+
   const { overrides, setOverride, deleteOverride } = useOverrides()
 
   useEffect(() => {
     chrome.storage.local.get('specUrl', (result) => {
       if (result.specUrl) setSpecUrl(result.specUrl as string)
     })
+  }, [])
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return
+      const delta = e.clientX - dragging.current.startX
+      if (dragging.current.side === 'left') {
+        setLeftWidth(Math.max(140, Math.min(400, dragging.current.startWidth + delta)))
+      } else {
+        setRightWidth(Math.max(140, Math.min(400, dragging.current.startWidth - delta)))
+      }
+    }
+    function onMouseUp() { dragging.current = null }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
   }, [])
 
   async function loadSpec() {
@@ -37,6 +60,7 @@ export function App() {
   }
 
   const selectedEndpoint = endpoints.find((e) => e.key === selectedKey)
+  const allSchemas: Record<string, OpenAPISchema> = { ...spec?.components?.schemas, ...spec?.definitions }
 
   function getResponseSchema(): OpenAPISchema | undefined {
     if (!spec || !selectedEndpoint) return undefined
@@ -46,7 +70,6 @@ export function App() {
     // OpenAPI 3.0: content['application/json'].schema — Swagger 2.0: schema directly on response
     const schema = response200?.content?.['application/json']?.schema ?? response200?.schema
     if (!schema) return undefined
-    const allSchemas = { ...spec.components?.schemas, ...spec.definitions }
     return resolveSchema(schema, allSchemas)
   }
 
@@ -70,7 +93,7 @@ export function App() {
       {loadError && <div style={{ padding: '4px 8px', color: 'red', fontSize: 12 }}>{loadError}</div>}
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: 220, flexShrink: 0 }}>
+        <div style={{ width: leftWidth, flexShrink: 0, overflow: 'hidden' }}>
           <EndpointList
             endpoints={endpoints}
             overrides={overrides}
@@ -79,12 +102,18 @@ export function App() {
           />
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div
+          onMouseDown={(e) => { dragging.current = { side: 'left', startX: e.clientX, startWidth: leftWidth }; e.preventDefault() }}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: '#e0e0e0' }}
+        />
+
+        <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
           {selectedKey ? (
             <OverrideEditor
               endpointKey={selectedKey}
               override={overrides[selectedKey]}
               responseSchema={getResponseSchema()}
+              schemas={allSchemas}
               onSave={(override: Override) => setOverride(selectedKey, override)}
               onDelete={() => deleteOverride(selectedKey)}
             />
@@ -93,10 +122,15 @@ export function App() {
           )}
         </div>
 
-        <div style={{ width: 220, flexShrink: 0 }}>
+        <div
+          onMouseDown={(e) => { dragging.current = { side: 'right', startX: e.clientX, startWidth: rightWidth }; e.preventDefault() }}
+          style={{ width: 4, flexShrink: 0, cursor: 'col-resize', background: '#e0e0e0' }}
+        />
+
+        <div style={{ width: rightWidth, flexShrink: 0, overflow: 'hidden' }}>
           <SchemaPreview
             schema={getResponseSchema()}
-            schemas={{ ...spec?.components?.schemas, ...spec?.definitions }}
+            schemas={allSchemas}
           />
         </div>
       </div>

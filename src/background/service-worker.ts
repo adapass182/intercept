@@ -5,6 +5,9 @@ import { matchPath, extractPathFromUrl } from '../lib/path-matcher'
 // In-memory cache, backed by chrome.storage.local
 const state: Record<string, OriginOverrides> = {}
 
+// Last real response body per endpoint key, e.g. "GET /api/users"
+const realResponses: Record<string, unknown> = {}
+
 async function loadOrigin(origin: string): Promise<OriginOverrides> {
   if (state[origin]) return state[origin]
   const stored = await chrome.storage.local.get(origin)
@@ -62,6 +65,15 @@ async function handleMessage(message: MessageType): Promise<unknown> {
       }
 
       return { matched: false } satisfies CheckInterceptResponse
+    }
+
+    case 'STORE_REAL_RESPONSE': {
+      realResponses[message.key] = message.body
+      return { ok: true }
+    }
+
+    case 'GET_REAL_RESPONSE': {
+      return realResponses[message.key] ?? null
     }
   }
 }

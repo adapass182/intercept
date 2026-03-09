@@ -38,6 +38,7 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
 
   const result = await sendToBackground({ type: 'CHECK_INTERCEPT', method, url }) as {
     matched: boolean
+    templatePath?: string
     override?: {
       statusCode: number | null
       delayMs: number | null
@@ -59,6 +60,15 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
     realBody = await realResponse.clone().json()
   } catch {
     // Non-JSON response — skip body merging, use raw override only
+  }
+
+  // Store real response body so the panel can use it for prefilling
+  if (result.templatePath) {
+    void sendToBackground({
+      type: 'STORE_REAL_RESPONSE',
+      key: `${method} ${result.templatePath}`,
+      body: realBody,
+    })
   }
 
   // Compute final body

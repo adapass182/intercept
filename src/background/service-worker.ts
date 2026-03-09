@@ -8,6 +8,9 @@ const state: Record<string, OriginOverrides> = {}
 // Last real response body per endpoint key, e.g. "GET /api/users"
 const realResponses: Record<string, unknown> = {}
 
+// Endpoints the panel is currently watching (for response capture without an override)
+const watchedPatterns: Array<{ method: string; path: string; key: string }> = []
+
 async function loadOrigin(origin: string): Promise<OriginOverrides> {
   if (state[origin]) return state[origin]
   const stored = await chrome.storage.local.get(origin)
@@ -64,7 +67,22 @@ async function handleMessage(message: MessageType): Promise<unknown> {
         } satisfies CheckInterceptResponse
       }
 
+      // No override matched — check if the panel is watching this URL for capture
+      for (const watched of watchedPatterns) {
+        if (watched.method !== message.method.toUpperCase()) continue
+        if (!matchPath(watched.path, path)) continue
+        return { matched: false, captureKey: watched.key } satisfies CheckInterceptResponse
+      }
+
       return { matched: false } satisfies CheckInterceptResponse
+    }
+
+    case 'WATCH_ENDPOINT': {
+      const key = `${message.method.toUpperCase()} ${message.path}`
+      if (!watchedPatterns.find((p) => p.key === key)) {
+        watchedPatterns.push({ method: message.method.toUpperCase(), path: message.path, key })
+      }
+      return { ok: true }
     }
 
     case 'STORE_REAL_RESPONSE': {

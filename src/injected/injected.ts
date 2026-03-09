@@ -39,6 +39,7 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
   const result = await sendToBackground({ type: 'CHECK_INTERCEPT', method, url }) as {
     matched: boolean
     templatePath?: string
+    captureKey?: string
     override?: {
       statusCode: number | null
       delayMs: number | null
@@ -47,7 +48,20 @@ window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Pr
     }
   }
 
-  if (!result.matched || !result.override) {
+  // No override — but if the panel is watching this endpoint, capture the response for prefilling
+  if (!result.matched) {
+    if (result.captureKey) {
+      const realResponse = await originalFetch(input, init)
+      try {
+        const body = await realResponse.clone().json()
+        void sendToBackground({ type: 'STORE_REAL_RESPONSE', key: result.captureKey, body })
+      } catch { /* non-JSON, skip */ }
+      return realResponse
+    }
+    return originalFetch(input, init)
+  }
+
+  if (!result.override) {
     return originalFetch(input, init)
   }
 

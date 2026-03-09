@@ -20,9 +20,10 @@ export type MessageType =
   | { type: 'CHECK_INTERCEPT'; method: string; url: string }
   | { type: 'STORE_REAL_RESPONSE'; key: string; body: unknown }
   | { type: 'GET_REAL_RESPONSE'; key: string }
+  | { type: 'WATCH_ENDPOINT'; method: string; path: string }
 
 export type CheckInterceptResponse =
-  | { matched: false }
+  | { matched: false; captureKey?: string }
   | { matched: true; override: Override; templatePath: string }
 
 export type OpenAPISpec = {

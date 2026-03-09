@@ -62,6 +62,12 @@ export function App() {
   const selectedEndpoint = endpoints.find((e) => e.key === selectedKey)
   const allSchemas: Record<string, OpenAPISchema> = { ...spec?.components?.schemas, ...spec?.definitions }
 
+  // Register the selected endpoint with the background so responses are captured even without an override
+  useEffect(() => {
+    if (!selectedEndpoint) return
+    chrome.runtime.sendMessage({ type: 'WATCH_ENDPOINT', method: selectedEndpoint.method, path: selectedEndpoint.path })
+  }, [selectedEndpoint])
+
   function getResponseSchema(): OpenAPISchema | undefined {
     if (!spec || !selectedEndpoint) return undefined
     const pathItem = spec.paths[selectedEndpoint.path]
